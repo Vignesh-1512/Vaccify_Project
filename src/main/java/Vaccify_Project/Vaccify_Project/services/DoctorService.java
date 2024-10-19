@@ -56,9 +56,7 @@ public class DoctorService {
     public List<String> getDoctorsbasedOnQualification(String qualification)
     {
         List<Doctor> doctors=doctorRepository.findByQualification(qualification);
-            if (doctors == null) {
-                doctors = new ArrayList<>();
-            }
+
             List<String> docNames=new ArrayList<>();
             for(Doctor doctor:doctors)
             {

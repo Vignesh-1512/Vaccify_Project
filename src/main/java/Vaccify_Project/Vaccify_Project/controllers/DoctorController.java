@@ -37,7 +37,7 @@ public class DoctorController {
     }
 
     @GetMapping("/doctorsQualification")
-    public List<String> getDoctorsbasedOnQualification(@PathVariable String qualification) {
+    public List<String> getDoctorsbasedOnQualification(@RequestParam String qualification) {
 
         return doctorService.getDoctorsbasedOnQualification(qualification);
     }

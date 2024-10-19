@@ -11,8 +11,14 @@ import Vaccify_Project.Vaccify_Project.repositories.DoctorRepository;
 import Vaccify_Project.Vaccify_Project.repositories.PatientRepository;
 import Vaccify_Project.Vaccify_Project.repositories.VaccinationCenterRepository;
 import Vaccify_Project.Vaccify_Project.requestDtos.AppointmentDto;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.mail.javamail.JavaMailSender;
+
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +42,10 @@ public class AppointmentService {
 
     @Autowired
     private PatientRepository patientRepository;
+
+    @Autowired
+    JavaMailSender javaMailSender;
+
 
     public String addAppointment(AppointmentDto appointmentDto) throws DoctorNotFoundException, PatientNotFoundException, CenterNotFoundException, AppointmentAlreadyDoneException, DosageNotAvailableException {
         Optional<Doctor> doctorOptional=doctorRepository.findById(appointmentDto.getDocId());
@@ -111,6 +121,23 @@ public class AppointmentService {
         doctor.getAppointmentList().add(appointment);
         doctorRepository.save(doctor);
 
+        String mail = patient.getEmailId();
+        String text = "Hey! Your appointment has been booked.\n\n" +
+                "Kindly find the below details of your appointment.\n\n" +
+                "Vaccination Center: "+vaccinationCenter.getCenterName()+
+                "\n\n Doctor :"+doctor.getName()+"\n\n Appointment Date & Time :"
+                +currentDateTime.plusHours(24);
+
+        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
+
+        simpleMailMessage.setFrom("vaccinationjavaproject@gmail.com");
+        simpleMailMessage.setTo(patient.getEmailId());
+        simpleMailMessage.setSubject("Vaccination Appointment update");
+        simpleMailMessage.setText(text);
+        javaMailSender.send(simpleMailMessage);
+
+
+
         return "Appointment successfully booked for patient " + patient.getName() + " with doctor " + doctor.getName() + " at center " + vaccinationCenter.getCenterName();
     }
 
@@ -184,7 +211,38 @@ public class AppointmentService {
         appointment.setVaccinated(true);
         appointmentRepository.save(appointment);
 
-        return "Patient " + patient.getName() + " has been successfully vaccinated at " + vaccinationCenter.getCenterName() + " by Doctor " + doctor.getName();
-    }
+        String htmlContent = "<html>" +
+                "<body>" +
+                "<p style='font-size:30px; font-weight:bold;'>Congratulations! You are vaccinated.</p>" +
+                "<br>" +
+                "<p style='font-size:14px;'>This is to certify that you have been vaccinated successfully at " +
+                "<span style='font-size:14px; font-weight:bold;'>" + vaccinationCenter.getCenterName() + "</span>" +
+                " by Doctor " +
+                "<span style='font-size:14px; font-weight:bold;'>" + doctor.getName() + "</span>" +
+                " on " +
+                "<span style='font-size:14px;'>" + appointment.getAppointmentDateTime() + "</span>" +
+                ".</p>" +
+                "</body>" +
+                "</html>";
 
+        try {
+            sendHtmlEmail(patient.getEmailId(), "Vaccination Successful update", htmlContent);
+        } catch (MessagingException e) {
+            e.printStackTrace();
+            return "Error sending email: " + e.getMessage();
+        }
+        return "Patient " + patient.getName() + " has been successfully vaccinated at " + vaccinationCenter.getCenterName() + " by Doctor " + doctor.getName() +" and mail had been sent !!" ;
+    }
+    private void sendHtmlEmail(String to, String subject, String htmlContent) throws MessagingException {
+        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+        helper.setFrom("vaccinationjavaproject@gmail.com");
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(htmlContent, true);
+
+        javaMailSender.send(mimeMessage);
+    }
 }
+
